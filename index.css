@@ -1,247 +1,368 @@
-import { useState } from "react";
-import { AppSettings } from "../types";
+import { Dispatch, SetStateAction } from "react";
+import { AppSettings, WeightItem } from "../types";
+import { weightOptions, truckCapacities } from "../data";
 import { fmt } from "../utils";
-import PileVisualizer from "./PileVisualizer";
-import { Hammer } from "lucide-react";
+import { Plus, Trash2, ArrowUpRight, Scale, Truck, Minus, Info } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 
-interface PileCalculatorProps {
+interface WeightCalculatorProps {
   settings: AppSettings;
+  items: WeightItem[];
+  setItems: Dispatch<SetStateAction<WeightItem[]>>;
 }
 
-export default function PileCalculator({ settings }: PileCalculatorProps) {
-  const [pileType, setPileType] = useState<string>("hex");
-  const [pileConnection, setPileConnection] = useState<string>("single");
-  const [pileStandard, setPileStandard] = useState<string>("no_tis");
-  const [pileLength, setPileLength] = useState<number | "">(2.0);
-  const [pileCount, setPileCount] = useState<number | "">(10);
+export default function WeightCalculator({ settings, items, setItems }: WeightCalculatorProps) {
+  const getWeightPerMeter = (typeValue: string): number => {
+    const opt = weightOptions.find((o) => o.value === typeValue);
+    if (!opt) return 0;
+    return settings.weights[opt.weightKey] || 0;
+  };
 
-  const isI18OrI22 = pileType === "i18" || pileType === "i22";
-  const hasStandardOption = pileType === "i18" || pileType === "i22" || pileType === "i26" || pileType === "i30";
-  
-  const isTis = hasStandardOption && pileStandard === "tis";
-  const isJoint = isI18OrI22 && pileConnection === "joint";
+  const getLabel = (typeValue: string): string => {
+    const opt = weightOptions.find((o) => o.value === typeValue);
+    return opt ? opt.label : "";
+  };
 
-  const calcPileLength = pileLength === "" ? 0 : pileLength;
-  const calcPileCount = pileCount === "" ? 0 : pileCount;
+  const addItem = () => {
+    const newItem: WeightItem = {
+      id: Math.random().toString(36).substring(2, 9),
+      type: "slab",
+      count: 10,
+      length: 2.0,
+      unitWeight: undefined,
+    };
+    setItems((prev) => [...prev, newItem]);
+  };
 
-  // Price & weight per meter deduction
-  let pricePerMeter = 0;
-  let weightPerMeter = 0;
+  const removeItem = (id: string) => {
+    setItems((prev) => prev.filter((item) => item.id !== id));
+  };
 
-  if (pileType === "i15") {
-    pricePerMeter = settings.prices.i15Price;
-    weightPerMeter = settings.weights.i15;
-  } else if (pileType === "hex") {
-    pricePerMeter = settings.prices.hexPilePrice;
-    weightPerMeter = settings.weights.hex;
-  } else if (pileType === "fence3") {
-    pricePerMeter = settings.prices.fence3Price;
-    weightPerMeter = settings.weights.fence3;
-  } else if (pileType === "fence4") {
-    pricePerMeter = settings.prices.fence4Price;
-    weightPerMeter = settings.weights.fence4;
-  } else if (pileType === "i18") {
-    weightPerMeter = isTis ? settings.weights.i18_tis : settings.weights.i18_no_tis;
-    if (isJoint) {
-      pricePerMeter = isTis ? settings.prices.i18TISJointPrice : settings.prices.i18JointPrice;
-    } else {
-      pricePerMeter = isTis ? settings.prices.i18TISPrice : settings.prices.i18NoTISPrice;
-    }
-  } else if (pileType === "i22") {
-    weightPerMeter = isTis ? settings.weights.i22_tis : settings.weights.i22_no_tis;
-    if (isJoint) {
-      pricePerMeter = isTis ? settings.prices.i22TISJointPrice : settings.prices.i22JointPrice;
-    } else {
-      pricePerMeter = isTis ? settings.prices.i22TISPrice : settings.prices.i22NoTISPrice;
-    }
-  } else if (pileType === "i26") {
-    pricePerMeter = isTis ? settings.prices.i26TISPrice : settings.prices.i26NoTISPrice;
-    weightPerMeter = isTis ? settings.weights.i26_tis : settings.weights.i26_no_tis;
-  } else if (pileType === "i30") {
-    pricePerMeter = isTis ? settings.prices.i30TISPrice : settings.prices.i30NoTISPrice;
-    weightPerMeter = isTis ? settings.weights.i30_tis : settings.weights.i30_no_tis;
-  } else if (pileType === "s18") {
-    pricePerMeter = settings.prices.s18Price;
-    weightPerMeter = settings.weights.s18;
-  } else if (pileType === "s22") {
-    pricePerMeter = settings.prices.s22Price;
-    weightPerMeter = settings.weights.s22;
-  } else if (pileType === "s26") {
-    pricePerMeter = settings.prices.s26Price;
-    weightPerMeter = settings.weights.s26;
-  } else if (pileType === "s30") {
-    pricePerMeter = settings.prices.s30Price;
-    weightPerMeter = settings.weights.s30;
-  } else if (pileType === "s35") {
-    pricePerMeter = settings.prices.s35Price;
-    weightPerMeter = settings.weights.s35;
-  } else if (pileType === "s40") {
-    pricePerMeter = settings.prices.s40Price;
-    weightPerMeter = settings.weights.s40;
-  }
+  const updateItem = (id: string, field: keyof WeightItem, value: any) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  };
 
-  const pricePerPile = pricePerMeter * calcPileLength;
-  const totalPrice = pricePerPile * calcPileCount;
-  const totalWeight = weightPerMeter * calcPileLength * calcPileCount;
+  const calculateItemWeight = (item: WeightItem): number => {
+    const rawWPerMeter = item.unitWeight !== undefined ? item.unitWeight : getWeightPerMeter(item.type);
+    const wPerMeter = rawWPerMeter === "" ? 0 : rawWPerMeter;
+    const len = item.length === "" ? 0 : item.length;
+    const cnt = item.count === "" ? 0 : item.count;
+    return wPerMeter * len * cnt;
+  };
+
+  const totalWeight = items.reduce((sum, item) => sum + calculateItemWeight(item), 0);
+
+  // Quick adjust adjustments helpers
+  const adjustCount = (id: string, current: number | "", delta: number) => {
+    const currNum = current === "" ? 0 : current;
+    updateItem(id, "count", Math.max(0, currNum + delta));
+  };
+
+  const adjustLength = (id: string, current: number | "", delta: number) => {
+    const currNum = current === "" ? 0 : current;
+    // Round to 1 decimal place to prevent floating issues
+    const val = parseFloat((currNum + delta).toFixed(1));
+    updateItem(id, "length", Math.max(0, val));
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      {/* Input controls */}
-      <div className="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-neutral-100 flex flex-col justify-between space-y-5">
-        <div>
-          <div className="flex items-center gap-2 pb-4 mb-4 border-b border-neutral-100">
-            <div className="p-2 bg-red-50 text-[#C62828] rounded-lg">
-              <Hammer size={18} />
+      {/* Dynamic List panel */}
+      <div className="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-neutral-100 flex flex-col justify-between space-y-6">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-red-50 text-[#C62828] rounded-lg">
+                <Scale size={18} />
+              </div>
+              <h3 className="font-semibold text-neutral-800 text-lg">รายการวัสดุบวกคำนวณน้ำหนัก</h3>
             </div>
-            <h3 className="font-semibold text-neutral-800 text-lg">สเปคเสาเข็ม / เสารั้ว</h3>
+            <button
+              onClick={addItem}
+              className="flex items-center gap-1 text-sm bg-red-50 text-[#C62828] hover:bg-red-100 transition font-semibold px-3 py-1.5 rounded-lg border border-red-100"
+            >
+              <Plus size={16} />
+              เพิ่มรายการ
+            </button>
           </div>
 
-          <div className="space-y-4">
-            {/* Pile Type option list */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-neutral-700">ชนิดและขนาดเสาเข็ม</label>
-              <select
-                value={pileType}
-                onChange={(e) => setPileType(e.target.value)}
-                className="w-full p-3 bg-neutral-50 hover:bg-neutral-100 transition border border-neutral-200 rounded-xl font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-[#C62828]"
-              >
-                <optgroup label="เสาเข็มไอ (I-Shape Pile)">
-                  <option value="i15">เสาเข็มไอ I-15</option>
-                  <option value="i18">เสาเข็มไอ I-18</option>
-                  <option value="i22">เสาเข็มไอ I-22</option>
-                  <option value="i26">เสาเข็มไอ I-26</option>
-                  <option value="i30">เสาเข็มไอ I-30</option>
-                </optgroup>
-                <optgroup label="เสาสี่เหลี่ยมตัน (Solid Square Pile) - ใหม่ ✨">
-                  <option value="s18">เสาสี่เหลี่ยมตัน S-18</option>
-                  <option value="s22">เสาสี่เหลี่ยมตัน S-22</option>
-                  <option value="s26">เสาสี่เหลี่ยมตัน S-26</option>
-                  <option value="s30">เสาสี่เหลี่ยมตัน S-30</option>
-                  <option value="s35">เสาสี่เหลี่ยมตัน S-35</option>
-                  <option value="s40">เสาสี่เหลี่ยมตัน S-40</option>
-                </optgroup>
-                <optgroup label="เสาเข็มประเภทอื่นๆ & เสารั้ว">
-                  <option value="hex">เสาเข็ม หกเหลี่ยมกลวง</option>
-                  <option value="fence3">เสารั้วลวดหนาม 3"</option>
-                  <option value="fence4">เสารั้วลวดหนาม 4"</option>
-                </optgroup>
-              </select>
-            </div>
+          <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
+            <AnimatePresence initial={false}>
+              {items.length === 0 ? (
+                <div className="text-center py-12 text-neutral-400">
+                  <Truck size={36} className="mx-auto mb-2 opacity-30 text-neutral-500" />
+                  <p className="font-semibold">ไม่มีรายการวัสดุ</p>
+                  <p className="text-xs">กดปุ่ม + เพิ่มรายการ ด้านบนเพื่อเริ่มต้นคำนวณ</p>
+                </div>
+              ) : (
+                items.map((item, index) => {
+                  const rawWPerMeter = item.unitWeight !== undefined ? item.unitWeight : getWeightPerMeter(item.type);
+                  const wPerMeter = rawWPerMeter === "" ? 0 : rawWPerMeter;
+                  const itemLen = item.length === "" ? 0 : item.length;
+                  const itemCnt = item.count === "" ? 0 : item.count;
+                  const itemWeight = wPerMeter * itemLen * itemCnt;
+                  return (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                      className="bg-neutral-50 rounded-xl p-4 border border-neutral-150 flex flex-col gap-3 relative hover:border-neutral-300 transition"
+                    >
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 flex items-center justify-center bg-neutral-200 text-xs text-neutral-600 rounded-full font-bold">
+                            {index + 1}
+                          </span>
+                          <select
+                            value={item.type}
+                            onChange={(e) => {
+                              const newType = e.target.value;
+                              setItems((prev) =>
+                                prev.map((it) =>
+                                  it.id === item.id
+                                    ? { ...it, type: newType, unitWeight: undefined }
+                                    : it
+                                )
+                              );
+                            }}
+                            className="bg-transparent border-0 hover:bg-neutral-150 rounded px-2 py-1 font-semibold text-neutral-800 text-sm focus:outline-none focus:ring-1 focus:ring-red-300"
+                          >
+                            {weightOptions.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
 
-            {/* Connection option for I18 / I22 */}
-            {isI18OrI22 && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold text-neutral-700">ลักษณะท่อนเสาเข็ม</label>
-                <select
-                  value={pileConnection}
-                  onChange={(e) => setPileConnection(e.target.value)}
-                  className="w-full p-3 bg-neutral-50 hover:bg-neutral-100 transition border border-neutral-200 rounded-xl font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-[#C62828]"
-                >
-                  <option value="single">ท่อนเดียว (Single Pile)</option>
-                  <option value="joint">ท่อนต่อเชื่อมหูสลัก (Joint Pile)</option>
-                </select>
-              </div>
-            )}
+                        {/* Delete Button */}
+                        <button
+                          onClick={() => removeItem(item.id)}
+                          className="absolute sm:relative top-4 right-4 sm:top-auto sm:right-auto text-neutral-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-lg transition"
+                          title="ลบรายการ"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
 
-            {/* Standard specifications TIS / Normal */}
-            {hasStandardOption && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold text-neutral-700">มาตรฐานการรองรับ</label>
-                <select
-                  value={pileStandard}
-                  onChange={(e) => setPileStandard(e.target.value)}
-                  className="w-full p-3 bg-neutral-50 hover:bg-neutral-100 transition border border-neutral-200 rounded-xl font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-[#C62828]"
-                >
-                  <option value="no_tis">เกรดธรรมดาทั่วไป (ไม่มีสัญลักษณ์ มอก.)</option>
-                  <option value="tis">เกรดผ่านรับรองมาตรฐาน มอก. (TIS Standard)</option>
-                </select>
-              </div>
-            )}
+                      {/* Controls rows for Count & Length */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-neutral-150/65 pt-3">
+                        {/* Length selector with - / + */}
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs text-neutral-500 font-semibold">ความยาวต่อหน่วย (เมตร)</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => adjustLength(item.id, item.length, -0.5)}
+                              className="w-8 h-8 flex items-center justify-center bg-white border border-neutral-200 rounded-lg active:bg-neutral-100"
+                            >
+                              <Minus size={14} />
+                            </button>
+                            <input
+                              type="number"
+                              value={item.length}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                updateItem(item.id, "length", val === "" ? "" : parseFloat(val));
+                              }}
+                              step="0.1"
+                              className="w-16 text-center border-0 bg-white py-1.5 text-sm font-semibold text-neutral-800 rounded-lg"
+                              placeholder="0"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => adjustLength(item.id, item.length, 0.5)}
+                              className="w-8 h-8 flex items-center justify-center bg-white border border-neutral-200 rounded-lg active:bg-neutral-100"
+                            >
+                              <Plus size={14} />
+                            </button>
+                            {/* Fast additions */}
+                            <div className="flex gap-1 pl-1">
+                              <button
+                                onClick={() => adjustLength(item.id, item.length, 1.0)}
+                                className="text-[10px] bg-neutral-200 text-neutral-600 font-medium py-1 px-1.5 rounded active:bg-neutral-300"
+                              >
+                                +1ม
+                              </button>
+                            </div>
+                          </div>
+                        </div>
 
-            {/* Pole length input */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-neutral-700 flex justify-between">
-                <span>ความยาวเสาต่อท่อน (เมตร)</span>
-                <span className="text-xs text-neutral-500 font-mono">ใส่แบบทศนิยมได้</span>
-              </label>
-              <input
-                type="number"
-                value={pileLength}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setPileLength(val === "" ? "" : parseFloat(val));
-                }}
-                step="0.1"
-                className="w-full p-3 bg-neutral-50 border border-neutral-200 rounded-xl font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-[#C62828]"
-                placeholder="เช่น 2.0"
-              />
-            </div>
+                        {/* Number selector with - / + */}
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs text-neutral-500 font-semibold">จำนวน (ชิ้น/แผ่น/ต้น)</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => adjustCount(item.id, item.count, -1)}
+                              className="w-8 h-8 flex items-center justify-center bg-white border border-neutral-200 rounded-lg active:bg-neutral-100"
+                            >
+                              <Minus size={14} />
+                            </button>
+                            <input
+                              type="number"
+                              value={item.count}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                updateItem(item.id, "count", val === "" ? "" : parseInt(val));
+                              }}
+                              className="w-16 text-center border-0 bg-white py-1.5 text-sm font-semibold text-neutral-800 rounded-lg"
+                              placeholder="0"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => adjustCount(item.id, item.count, 1)}
+                              className="w-8 h-8 flex items-center justify-center bg-white border border-neutral-200 rounded-lg active:bg-neutral-100"
+                            >
+                              <Plus size={14} />
+                            </button>
+                            {/* Fast additions */}
+                            <div className="flex gap-1 pl-1">
+                              <button
+                                onClick={() => adjustCount(item.id, item.count, 10)}
+                                className="text-[10px] bg-neutral-200 text-neutral-600 font-medium py-1 px-1.5 rounded active:bg-neutral-300"
+                              >
+                                +10
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
 
-            {/* Pile count */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-neutral-700">จำนวนเสาเข็ม/เสารั้วที่สั่งซื้อ (ต้น)</label>
-              <input
-                type="number"
-                value={pileCount}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setPileCount(val === "" ? "" : parseInt(val));
-                }}
-                step="1"
-                className="w-full p-3 bg-neutral-50 border border-neutral-200 rounded-xl font-medium text-neutral-800 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-[#C62828]"
-                placeholder="เช่น 10"
-              />
-            </div>
+                      {/* Display item total weight with inline editable field */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-1 text-xs border-t border-neutral-150/40 pt-2 text-neutral-400 font-medium gap-2">
+                        <div className="flex items-center flex-wrap gap-1.5">
+                          <span>น้ำหนักหน่วยละ:</span>
+                          <input
+                            type="number"
+                            value={item.unitWeight !== undefined ? item.unitWeight : getWeightPerMeter(item.type)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              updateItem(item.id, "unitWeight", val === "" ? "" : parseFloat(val));
+                            }}
+                            className="w-16 px-1.5 py-0.5 text-center font-bold bg-white border border-neutral-200 rounded text-neutral-800 focus:outline-none focus:ring-1 focus:ring-red-200"
+                            step="0.01"
+                          />
+                          <span>กก./ม.</span>
+                          {item.unitWeight !== undefined && item.unitWeight !== getWeightPerMeter(item.type) && (
+                            <button
+                              onClick={() => {
+                                setItems((prev) =>
+                                  prev.map((it) =>
+                                    it.id === item.id ? { ...it, unitWeight: undefined } : it
+                                  )
+                                );
+                              }}
+                              className="text-[10px] text-[#C62828] underline hover:text-red-800 font-bold ml-1"
+                              title="คืนค่าอ้างอิงมาตรฐาน"
+                            >
+                              คืนค่าเริ่มต้น
+                            </button>
+                          )}
+                        </div>
+                        <span className="text-[#C62828] font-bold text-sm">
+                          น้ำหนักสะสม: {fmt(itemWeight)} กก.
+                        </span>
+                      </div>
+                    </motion.div>
+                  );
+                })
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
-        {/* Dynamic visual representation */}
-        <PileVisualizer pileType={pileType} isJoint={isJoint} isTis={isTis} length={calcPileLength} />
+        {/* Informative logistics footer */}
+        <div className="bg-amber-50 rounded-xl p-3 border border-amber-100 flex gap-2.5 text-xs text-amber-800">
+          <Info className="flex-shrink-0 text-amber-600 mt-0.5" size={16} />
+          <div>
+            <p className="font-semibold mb-0.5">การคำนวณน้ำหนักเชิงโลจิสติกส์</p>
+            <p className="leading-relaxed">
+              สเปคน้ำหนักที่ใช้ต่อเมตร ได้จัดสรรตามการรับรองน้ำหนักบรรทุกและการขนถ่ายหน้างานของบริษัท พงษ์สกุลคอนกรีต จำกัด เพื่อประเมินรถรับจ้างหรือจัดส่งได้ง่ายขึ้น
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Summary box outputs */}
-      <div className="lg:col-span-5 flex flex-col gap-6 justify-between">
-        <div className="bg-gradient-to-br from-[#E53935] to-[#B71C1C] text-white rounded-2xl p-6 shadow-md flex flex-col justify-between h-full min-h-[350px]">
+      {/* Aggregate / Truck Weight metrics */}
+      <div className="lg:col-span-5 space-y-6 flex flex-col justify-between">
+        {/* Sum Card */}
+        <div className="bg-gradient-to-br from-[#E53935] to-[#B71C1C] text-white rounded-2xl p-6 shadow-md flex flex-col justify-between h-[180px]">
           <div>
             <span className="text-xs font-semibold bg-white/20 text-white py-1 px-3 rounded-full uppercase tracking-wider">
-              ผลการประมาณราคาเสาเข็ม
+              ยอดสะสมกองวัสดุ
             </span>
-            <div className="mt-6">
-              <span className="text-lg opacity-85 block">ยอดราคารวมสุทธิ</span>
+            <div className="mt-4">
+              <span className="text-sm opacity-85 block">น้ำหนักสุทธิแปรสภาพขนส่ง</span>
               <span className="text-4xl md:text-5xl font-extrabold tracking-tight">
-                ฿{fmt(totalPrice)}
-              </span>
-              <span className="text-sm opacity-85 block mt-2 font-light">
-                (รายละเอียด: {calcPileCount} ต้น ท่อนละ {calcPileLength.toFixed(2)} เมตร)
+                {fmt(totalWeight)} <span className="text-lg">กก.</span>
               </span>
             </div>
           </div>
+          <p className="text-xs font-light opacity-80 text-right">
+            ({(totalWeight / 1000).toFixed(3)} ตันเมตริก)
+          </p>
+        </div>
 
-          <div className="border-t border-white/20 pt-5 mt-6 space-y-3 font-light text-neutral-100">
-            <div className="flex justify-between items-center text-sm">
-              <span>อัตราค่าเสาเฉลี่ย:</span>
-              <strong className="text-white font-semibold">฿{fmt(pricePerMeter)} / เมตร</strong>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span>เกรดมาตรฐานรับรอง:</span>
-              <span className="text-white font-bold bg-white/10 px-2 py-0.5 rounded text-xs">
-                {isTis ? "มอก. (TIS Approved)" : "ธรรมดาทั่วไป"}
-              </span>
-            </div>
-            {isI18OrI22 && (
-              <div className="flex justify-between items-center text-sm">
-                <span>รูปแบบโครงสร้างการเชื่อม:</span>
-                <strong className="text-white font-medium">{isJoint ? "ใช้แผ่นเหล็กเชื่อมต่อหัว" : "ท่อนชิ้นเดียวยาวตลอด"}</strong>
-              </div>
-            )}
-            <div className="flex justify-between items-center text-sm border-t border-white/15 pt-2">
-              <span>ราคาต่อหนึ่งต้นเสา:</span>
-              <strong className="text-white font-semibold text-base">฿{fmt(pricePerPile)}</strong>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span>ประมาณการน้ำหนักสุทธิ:</span>
-              <span className="text-amber-300 font-bold text-base">{fmt(totalWeight)} กก.</span>
-            </div>
+        {/* Truck visual Loading meters */}
+        <div className="bg-white rounded-2xl p-6 border border-neutral-100 shadow-sm space-y-4 flex-1">
+          <h4 className="font-semibold text-neutral-800 text-sm flex items-center gap-1.5 border-b border-neutral-100 pb-2.5">
+            <Truck size={16} className="text-[#C62828]" />
+            ประมาณกำลังรับน้ำหนักของยานพาหนะบรรทุก
+          </h4>
+
+          <div className="space-y-4 pt-1">
+            {truckCapacities.map((truck) => {
+              const capPercent = Math.min(100, (totalWeight / truck.capacityKg) * 100);
+              const isOver = totalWeight > truck.capacityKg;
+
+              // Color determination
+              let colorBar = "bg-green-500";
+              let colorBg = "bg-green-50 text-green-700";
+              if (capPercent > 100) {
+                colorBar = "bg-red-500 animate-pulse";
+                colorBg = "bg-red-50 text-red-700";
+              } else if (capPercent > 75) {
+                colorBar = "bg-amber-500";
+                colorBg = "bg-amber-50 text-amber-700";
+              }
+
+              return (
+                <div key={truck.name} className="space-y-1">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold text-neutral-700">{truck.name}</span>
+                    <span className="font-mono text-neutral-500">
+                      สูงสุด: {truck.label}
+                    </span>
+                  </div>
+
+                  <div className="relative">
+                    {/* Progress Bar background */}
+                    <div className="h-2.5 bg-neutral-100 rounded-full overflow-hidden">
+                      <motion.div
+                        className={`h-full rounded-full ${colorBar}`}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${capPercent}%` }}
+                        transition={{ duration: 0.3 }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className={`px-2 py-0.5 rounded font-medium ${colorBg}`}>
+                      {isOver ? "❌ เกินพิกัดน้ำหนักปลอดภัย" : capPercent > 80 ? "⚠️ ใกล้เต็มขีดจำกัด" : "✅ บรรทุกรอดปลอดภัย"}
+                    </span>
+                    <span className="font-semibold text-neutral-600 font-mono">
+                      {capPercent.toFixed(1)}% ({fmt(totalWeight)} / {fmt(truck.capacityKg)} กก.)
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

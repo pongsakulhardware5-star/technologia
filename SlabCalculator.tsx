@@ -1,110 +1,138 @@
-import { AppSettings } from "./types";
+import { motion } from "motion/react";
 
-export const APP_VERSION = "V.33";
+interface PileVisualizerProps {
+  pileType: string;
+  isJoint: boolean;
+  isTis: boolean;
+  length: number;
+}
 
-export const defaultSettings: AppSettings = {
-  prices: {
-    normalBoardPrice: 195,
-    mocBoardPrice: 230,
-    i15Price: 85,
-    // I-18
-    i18NoTISPrice: 110,
-    i18TISPrice: 135,
-    i18JointPrice: 130,
-    i18TISJointPrice: 150,
-    // I-22
-    i22NoTISPrice: 155,
-    i22TISPrice: 175,
-    i22JointPrice: 165,
-    i22TISJointPrice: 185,
-    // Others
-    i26NoTISPrice: 185,
-    i26TISPrice: 235,
-    i30NoTISPrice: 215,
-    i30TISPrice: 285,
-    hexPilePrice: 65,
-    // S-Piles default prices
-    s18Price: 135,
-    s22Price: 180,
-    s26Price: 240,
-    s30Price: 320,
-    s35Price: 420,
-    s40Price: 530,
-    fence3Price: 60,
-    fence4Price: 75,
-    hcPriceSqm: 655,
-    vatPercent: 7,
-  },
-  weights: {
-    slab: 42.0,
-    fence3: 14.0,
-    fence4: 24.0,
-    hex: 35.0,
-    // I-Piles
-    i15: 35.0,
-    i18_no_tis: 68.0,
-    i18_tis: 72.0,
-    i22_no_tis: 105.0,
-    i22_tis: 110.0,
-    i26_no_tis: 145.0,
-    i26_tis: 155.0,
-    i30_no_tis: 195.0,
-    i30_tis: 210.0,
-    i35: 250.0,
-    i40: 310.0,
-    // S-Piles
-    s18: 78.0,
-    s22: 117.0,
-    s26: 163.0,
-    s30: 216.0,
-    s35: 275.0,
-    s40: 350.0,
-  },
-};
+export function PileVisualizer({ pileType, isJoint, isTis, length }: PileVisualizerProps) {
+  // Renders a modern preview of the selected pile design
+  const getShapeName = () => {
+    switch (pileType) {
+      case "hex":
+        return "เสาเข็มหกเหลี่ยมกลวง";
+      case "i15":
+        return "เสาเข็มไอ I-15";
+      case "i18":
+        return `เสาเข็มไอ I-18 ${isJoint ? "(ท่อนต่อ Joint)" : "(ท่อนเดียว)"}`;
+      case "i22":
+        return `เสาเข็มไอ I-22 ${isJoint ? "(ท่อนต่อ Joint)" : "(ท่อนเดียว)"}`;
+      case "i26":
+        return "เสาเข็มไอ I-26";
+      case "i30":
+        return "เสาเข็มไอ I-30";
+      case "s18":
+        return "เสาสี่เหลี่ยมตัน S-18";
+      case "s22":
+        return "เสาสี่เหลี่ยมตัน S-22";
+      case "s26":
+        return "เสาสี่เหลี่ยมตัน S-26";
+      case "s30":
+        return "เสาสี่เหลี่ยมตัน S-30";
+      case "s35":
+        return "เสาสี่เหลี่ยมตัน S-35";
+      case "s40":
+        return "เสาสี่เหลี่ยมตัน S-40";
+      case "fence3":
+        return "เสารั้วหน้า 3 นิ้ว";
+      case "fence4":
+        return "เสารั้วหน้า 4 นิ้ว";
+      default:
+        return "เสาเข็มมาตรฐาน";
+    }
+  };
 
-export const loadCapacityTable: Record<number, number[]> = {
-  2.00: [600, 0, 0, 0, 0],
-  3.00: [500, 600, 670, 770, 0],
-  3.40: [300, 500, 560, 630, 0],
-  3.75: [0, 360, 400, 480, 0],
-  3.80: [0, 300, 380, 470, 0],
-  4.00: [0, 280, 300, 400, 0],
-  4.20: [0, 250, 290, 300, 0],
-  4.40: [0, 0, 260, 290, 300],
-  4.50: [0, 0, 250, 260, 290],
-  4.80: [0, 0, 0, 250, 270],
-  4.90: [0, 0, 0, 220, 250],
-  5.00: [0, 0, 0, 200, 250],
-};
+  return (
+    <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-150 flex flex-col items-center justify-center gap-4">
+      <span className="text-xs font-mono text-neutral-500 uppercase tracking-wider">ภาพโครงสร้างเสาคอนกรีตอัดแรง</span>
+      
+      <div className="flex flex-wrap items-center justify-center gap-8 w-full">
+        {/* Cross Section SVG */}
+        <div className="flex flex-col items-center justify-center">
+          <svg width="100" height="100" viewBox="0 0 100 100">
+            {pileType === "hex" ? (
+              // Hexagonal profile
+              <g>
+                <polygon points="50,15 80,32.5 80,67.5 50,85 20,67.5 20,32.5" fill="#D4D4D8" stroke="#71717A" strokeWidth="2.5" />
+                <circle cx="50" cy="50" r="18" fill="#F4F4F5" stroke="#A1A1AA" strokeWidth="1.5" />
+                <text x="50" y="54" fill="#71717A" fontSize="9" textAnchor="middle" fontWeight="bold" fontFamily="Kanit">กลวง</text>
+              </g>
+            ) : pileType.startsWith("i") ? (
+              // I-Shape Profile
+              <g>
+                <path
+                  d="M 25,20 L 75,20 L 75,32 L 60,38 L 60,62 L 75,68 L 75,80 L 25,80 L 25,68 L 40,62 L 40,38 L 25,32 Z"
+                  fill="#D4D4D8"
+                  stroke="#71717A"
+                  strokeWidth="2.5"
+                />
+                <circle cx="50" cy="50" r="3" fill="#A1A1AA" />
+                {/* Visual steel wire strands in I-Shape */}
+                <circle cx="32" cy="26" r="2.5" fill="#F59E0B" />
+                <circle cx="68" cy="26" r="2.5" fill="#F59E0B" />
+                <circle cx="32" cy="74" r="2.5" fill="#F59E0B" />
+                <circle cx="68" cy="74" r="2.5" fill="#F59E0B" />
+              </g>
+            ) : pileType.startsWith("s") ? (
+              // Solid Square Pile Profile
+              <g>
+                <rect x="20" y="20" width="60" height="60" rx="4" fill="#D4D4D8" stroke="#71717A" strokeWidth="2.5" />
+                {/* Visual steel wire strands at 4 corners */}
+                <circle cx="28" cy="28" r="3" fill="#F59E0B" />
+                <circle cx="72" cy="28" r="3" fill="#F59E0B" />
+                <circle cx="28" cy="72" r="3" fill="#F59E0B" />
+                <circle cx="72" cy="72" r="3" fill="#F59E0B" />
+                <text x="50" y="54" fill="#71717A" fontSize="9" textAnchor="middle" fontWeight="bold" fontFamily="Kanit">ตัน</text>
+              </g>
+            ) : (
+              // Square/Post profile for fences
+              <g>
+                <rect x="25" y="25" width="50" height="50" rx="4" fill="#D4D4D8" stroke="#71717A" strokeWidth="2.5" />
+                <line x1="25" y1="25" x2="75" y2="75" stroke="#E4E4E7" strokeWidth="1.5" />
+                <line x1="75" y1="25" x2="25" y2="75" stroke="#E4E4E7" strokeWidth="1.5" />
+                <circle cx="50" cy="50" r="4" fill="#F59E0B" />
+              </g>
+            )}
+            
+            {/* TIS Badge inside SVG */}
+            {isTis && (
+              <g transform="translate(68, 8)">
+                <circle cx="8" cy="8" r="9" fill="#C62828" />
+                <text x="8" y="11" fill="#FFFFFF" fontSize="8" fontWeight="bold" textAnchor="middle">มอก</text>
+              </g>
+            )}
+          </svg>
+          <span className="text-xs text-neutral-600 mt-2 font-medium">{getShapeName()}</span>
+        </div>
 
-export const weightOptions = [
-  { value: "slab", label: "แผ่นพื้นสำเร็จรูป", weightKey: "slab" as const },
-  { value: "fence3", label: "เสารั้ว 3\"", weightKey: "fence3" as const },
-  { value: "fence4", label: "เสารั้ว 4\"", weightKey: "fence4" as const },
-  { value: "hex", label: "เสาเข็ม หกเหลี่ยม", weightKey: "hex" as const },
-  { value: "i15", label: "เสาเข็ม I-15", weightKey: "i15" as const },
-  { value: "i18_no_tis", label: "เสาเข็ม I-18 (ธรรมดา)", weightKey: "i18_no_tis" as const },
-  { value: "i18_tis", label: "เสาเข็ม I-18 (มอก.)", weightKey: "i18_tis" as const },
-  { value: "i22_no_tis", label: "เสาเข็ม I-22 (ธรรมดา)", weightKey: "i22_no_tis" as const },
-  { value: "i22_tis", label: "เสาเข็ม I-22 (มอก.)", weightKey: "i22_tis" as const },
-  { value: "i26_no_tis", label: "เสาเข็ม I-26 (ธรรมดา)", weightKey: "i26_no_tis" as const },
-  { value: "i26_tis", label: "เสาเข็ม I-26 (มอก.)", weightKey: "i26_tis" as const },
-  { value: "i30_no_tis", label: "เสาเข็ม I-30 (ธรรมดา)", weightKey: "i30_no_tis" as const },
-  { value: "i30_tis", label: "เสาเข็ม I-30 (มอก.)", weightKey: "i30_tis" as const },
-  { value: "i35", label: "เสาเข็ม I-35", weightKey: "i35" as const },
-  { value: "i40", label: "เสาเข็ม I-40", weightKey: "i40" as const },
-  { value: "s18", label: "เสาเข็ม S-18", weightKey: "s18" as const },
-  { value: "s22", label: "เสาเข็ม S-22", weightKey: "s22" as const },
-  { value: "s26", label: "เสาเข็ม S-26", weightKey: "s26" as const },
-  { value: "s30", label: "เสาเข็ม S-30", weightKey: "s30" as const },
-  { value: "s35", label: "เสาเข็ม S-35", weightKey: "s35" as const },
-  { value: "s40", label: "เสาเข็ม S-40", weightKey: "s40" as const },
-];
+        {/* Height Side projection */}
+        <div className="flex flex-col items-center">
+          <svg width="150" height="100" viewBox="0 0 150 100">
+            {/* Long pole */}
+            <rect x="20" y="25" width="110" height="16" rx="2" fill="#E4E4E7" stroke="#71717A" strokeWidth="1.5" />
+            
+            {/* If there is a joint, draw welding plate in the middle */}
+            {isJoint && (
+              <g>
+                <rect x="73" y="23" width="4" height="20" fill="#3F3F46" />
+                <text x="75" y="15" fill="#52525B" fontSize="8" textAnchor="middle" fontFamily="Kanit">ข้อต่อเชื่อม</text>
+              </g>
+            )}
 
-export const truckCapacities = [
-  { name: "รถบรรทุก 6 ล้อ", capacityKg: 7500, label: "7.5 ตัน" },
-  { name: "รถบรรทุก 10 ล้อ", capacityKg: 13500, label: "13.5 ตัน" },
-  { name: "รถบรรทุก 12 ล้อ", capacityKg: 16500, label: "16.5 ตัน" },
-  { name: "รถเทเลอร์", capacityKg: 25000, label: "25.0 ตัน" },
-  { name: "รถพ่วง", capacityKg: 31000, label: "31.0 ตัน" },
-];
+            {/* Dimension arrow */}
+            <line x1="20" y1="65" x2="130" y2="65" stroke="#71717A" strokeWidth="1" />
+            <polygon points="20,65 25,62 25,68" fill="#71717A" />
+            <polygon points="130,65 125,62 125,68" fill="#71717A" />
+            <text x="75" y="82" fill="#27272A" fontSize="11" fontWeight="600" textAnchor="middle" fontFamily="Kanit">
+              ความยาว {length.toFixed(2)} ม.
+            </text>
+          </svg>
+          <span className="text-xs text-neutral-600 font-medium">มุมภาพด้านหน้า</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+export default PileVisualizer;

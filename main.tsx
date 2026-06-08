@@ -1,80 +1,110 @@
-import { motion } from "motion/react";
+import { AppSettings } from "./types";
 
-interface SlabVisualizerProps {
-  length: number;
-  wireCount: string;
-}
+export const APP_VERSION = "V.33";
 
-export function SlabVisualizer({ length, wireCount }: SlabVisualizerProps) {
-  // Determine dots to show representing wires
-  let dots = 4;
-  if (wireCount === "5") dots = 5;
-  else if (wireCount === "6") dots = 6;
-  else if (wireCount === "7") dots = 7;
-  else if (wireCount === "8" || wireCount === "5_mm_5") dots = 8;
+export const defaultSettings: AppSettings = {
+  prices: {
+    normalBoardPrice: 195,
+    mocBoardPrice: 230,
+    i15Price: 85,
+    // I-18
+    i18NoTISPrice: 110,
+    i18TISPrice: 135,
+    i18JointPrice: 130,
+    i18TISJointPrice: 150,
+    // I-22
+    i22NoTISPrice: 155,
+    i22TISPrice: 175,
+    i22JointPrice: 165,
+    i22TISJointPrice: 185,
+    // Others
+    i26NoTISPrice: 185,
+    i26TISPrice: 235,
+    i30NoTISPrice: 215,
+    i30TISPrice: 285,
+    hexPilePrice: 65,
+    // S-Piles default prices
+    s18Price: 135,
+    s22Price: 180,
+    s26Price: 240,
+    s30Price: 320,
+    s35Price: 420,
+    s40Price: 530,
+    fence3Price: 60,
+    fence4Price: 75,
+    hcPriceSqm: 655,
+    vatPercent: 7,
+  },
+  weights: {
+    slab: 42.0,
+    fence3: 14.0,
+    fence4: 24.0,
+    hex: 35.0,
+    // I-Piles
+    i15: 35.0,
+    i18_no_tis: 68.0,
+    i18_tis: 72.0,
+    i22_no_tis: 105.0,
+    i22_tis: 110.0,
+    i26_no_tis: 145.0,
+    i26_tis: 155.0,
+    i30_no_tis: 195.0,
+    i30_tis: 210.0,
+    i35: 250.0,
+    i40: 310.0,
+    // S-Piles
+    s18: 78.0,
+    s22: 117.0,
+    s26: 163.0,
+    s30: 216.0,
+    s35: 275.0,
+    s40: 350.0,
+  },
+};
 
-  // Render a lovely SVG representing the cross section and side view of our prestressed slab
-  return (
-    <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-150 flex flex-col items-center justify-center gap-4">
-      <span className="text-xs font-mono text-neutral-500 uppercase tracking-wider">แบบจำลองภาพ 3 มิติและภาคตัดขวาง</span>
-      
-      <div className="flex flex-wrap items-center justify-center gap-8 w-full">
-        {/* Cross Section */}
-        <div className="flex flex-col items-center">
-          <svg width="120" height="90" viewBox="0 0 120 90" className="drop-shadow-sm">
-            {/* Concrete Slab Shape */}
-            <rect x="10" y="20" width="100" height="40" rx="3" fill="#D4D4D8" stroke="#71717A" strokeWidth="2" />
-            {/* Top chamfers for a professional plank slab shape */}
-            <polygon points="10,20 20,20 15,30 10,30" fill="#E4E4E7" />
-            <polygon points="110,20 100,20 105,30 110,30" fill="#E4E4E7" />
-            {/* Plank Dimension Marks */}
-            <line x1="10" y1="75" x2="110" y2="75" stroke="#A1A1AA" strokeWidth="1" strokeDasharray="2" />
-            <text x="60" y="87" fill="#71717A" fontSize="10" textAnchor="middle" fontFamily="Kanit">กว้าง 35 ซม.</text>
-            
-            {/* Wires (PC strand dots) */}
-            {Array.from({ length: dots }).map((_, i) => {
-              // Distribute dots inside plank slab
-              const offset = 100 / (dots + 1);
-              const cx = 10 + offset * (i + 1);
-              return (
-                <motion.circle
-                  key={i}
-                  cx={cx}
-                  cy="40"
-                  r="3.5"
-                  fill="#F59E0B"
-                  stroke="#D97706"
-                  strokeWidth="1"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ delay: i * 0.05, duration: 0.5 }}
-                />
-              );
-            })}
-          </svg>
-          <span className="text-xs text-neutral-600 mt-1 font-medium">แผ่นพื้นสำเร็จรูป (ลวด {dots} เส้น)</span>
-        </div>
+export const loadCapacityTable: Record<number, number[]> = {
+  2.00: [600, 0, 0, 0, 0],
+  3.00: [500, 600, 670, 770, 0],
+  3.40: [300, 500, 560, 630, 0],
+  3.75: [0, 360, 400, 480, 0],
+  3.80: [0, 300, 380, 470, 0],
+  4.00: [0, 280, 300, 400, 0],
+  4.20: [0, 250, 290, 300, 0],
+  4.40: [0, 0, 260, 290, 300],
+  4.50: [0, 0, 250, 260, 290],
+  4.80: [0, 0, 0, 250, 270],
+  4.90: [0, 0, 0, 220, 250],
+  5.00: [0, 0, 0, 200, 250],
+};
 
-        {/* Longitude Side View represent length */}
-        <div className="flex flex-col items-center">
-          <svg width="160" height="90" viewBox="0 0 160 90">
-            {/* Side projection of slab */}
-            <rect x="10" y="25" width="140" height="24" rx="2" fill="#E4E4E7" stroke="#909090" strokeWidth="1.5" />
-            {/* Metal reinforcement lines showing through */}
-            <line x1="10" y1="37" x2="150" y2="37" stroke="#F59E0B" strokeWidth="1" strokeDasharray="3" />
-            
-            {/* Length Mark */}
-            <line x1="10" y1="65" x2="150" y2="65" stroke="#71717A" strokeWidth="1" />
-            <polygon points="10,65 15,62 15,68" fill="#71717A" />
-            <polygon points="150,65 145,62 145,68" fill="#71717A" />
-            <text x="80" y="80" fill="#27272A" fontSize="11" fontWeight="600" textAnchor="middle" fontFamily="Kanit">
-              ยาว {length.toFixed(2)} ม.
-            </text>
-          </svg>
-          <span className="text-xs text-neutral-600 mt-1 font-medium">มุมมองด้านความยาวด้านข้าง</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-export default SlabVisualizer;
+export const weightOptions = [
+  { value: "slab", label: "แผ่นพื้นสำเร็จรูป", weightKey: "slab" as const },
+  { value: "fence3", label: "เสารั้ว 3\"", weightKey: "fence3" as const },
+  { value: "fence4", label: "เสารั้ว 4\"", weightKey: "fence4" as const },
+  { value: "hex", label: "เสาเข็ม หกเหลี่ยม", weightKey: "hex" as const },
+  { value: "i15", label: "เสาเข็ม I-15", weightKey: "i15" as const },
+  { value: "i18_no_tis", label: "เสาเข็ม I-18 (ธรรมดา)", weightKey: "i18_no_tis" as const },
+  { value: "i18_tis", label: "เสาเข็ม I-18 (มอก.)", weightKey: "i18_tis" as const },
+  { value: "i22_no_tis", label: "เสาเข็ม I-22 (ธรรมดา)", weightKey: "i22_no_tis" as const },
+  { value: "i22_tis", label: "เสาเข็ม I-22 (มอก.)", weightKey: "i22_tis" as const },
+  { value: "i26_no_tis", label: "เสาเข็ม I-26 (ธรรมดา)", weightKey: "i26_no_tis" as const },
+  { value: "i26_tis", label: "เสาเข็ม I-26 (มอก.)", weightKey: "i26_tis" as const },
+  { value: "i30_no_tis", label: "เสาเข็ม I-30 (ธรรมดา)", weightKey: "i30_no_tis" as const },
+  { value: "i30_tis", label: "เสาเข็ม I-30 (มอก.)", weightKey: "i30_tis" as const },
+  { value: "i35", label: "เสาเข็ม I-35", weightKey: "i35" as const },
+  { value: "i40", label: "เสาเข็ม I-40", weightKey: "i40" as const },
+  { value: "s18", label: "เสาเข็ม S-18", weightKey: "s18" as const },
+  { value: "s22", label: "เสาเข็ม S-22", weightKey: "s22" as const },
+  { value: "s26", label: "เสาเข็ม S-26", weightKey: "s26" as const },
+  { value: "s30", label: "เสาเข็ม S-30", weightKey: "s30" as const },
+  { value: "s35", label: "เสาเข็ม S-35", weightKey: "s35" as const },
+  { value: "s40", label: "เสาเข็ม S-40", weightKey: "s40" as const },
+];
+
+export const truckCapacities = [
+  { name: "รถบรรทุก 6 ล้อ", capacityKg: 7500, label: "7.5 ตัน" },
+  { name: "รถบรรทุก 10 ล้อ", capacityKg: 13500, label: "13.5 ตัน" },
+  { name: "รถบรรทุก 12 ล้อ", capacityKg: 16500, label: "16.5 ตัน" },
+  { name: "รถเทเลอร์", capacityKg: 25000, label: "25.0 ตัน" },
+  { name: "รถพ่วง", capacityKg: 31000, label: "31.0 ตัน" },
+];
